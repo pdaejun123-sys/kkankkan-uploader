@@ -1,0 +1,43 @@
+name: 인스타 자동 업로드
+on:
+  schedule:
+    - cron: "*/30 * * * *"      # 30분마다 예약 시간 지난 게시물 확인
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "시험 실행 (게시 안 하고 준비만)"
+        type: boolean
+        default: true
+      folder:
+        description: "특정 폴더만 (예: posts/2026-10-21_1200_ep1) — 비우면 예약된 것 전부"
+        required: false
+permissions:
+  contents: write
+concurrency: publish
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: PNG → JPG 변환 (인스타는 JPG만 받음)
+        run: |
+          pip install -q pillow
+          python - <<'PY'
+          import glob, os
+          from PIL import Image
+          for p in glob.glob("posts/**/*.png", recursive=True):
+              Image.open(p).convert("RGB").save(p[:-4] + ".jpg", quality=92); os.remove(p); print("변환", p)
+          PY
+          git config user.name "kkankkan-bot"; git config user.email "bot@users.noreply.github.com"
+          git add -A posts && (git diff --cached --quiet || (git commit -m "PNG→JPG 변환" && git push && sleep 20))
+      - name: 게시
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          FORCE_FOLDER: ${{ inputs.folder }}
+        run: python publish.py
+      - name: 게시 기록 저장
+        run: |
+          git add -A posts && (git diff --cached --quiet || (git commit -m "게시 완료 기록" && git push))
