@@ -4,7 +4,8 @@ posts/<YYYY-MM-DD_HHMM>_<이름>/ 폴더에 이미지(01.jpg, 02.jpg …) 또는
 """
 import os, sys, json, time, glob, datetime, urllib.parse, urllib.request
 
-TOKEN = os.environ["IG_TOKEN"]
+TOKEN = os.environ.get("IG_TOKEN", "")
+POSTS_DIR = os.environ.get("POSTS_DIR", "posts")   # 계정별 폴더 (posts/kkankkan, posts/napzzi)
 REPO = os.environ["GITHUB_REPOSITORY"]          # owner/repo
 BRANCH = os.environ.get("BRANCH", "main")
 DRY = os.environ.get("DRY_RUN", "false").lower() == "true"
@@ -44,11 +45,15 @@ def due(folder):
     return when <= datetime.datetime.now(KST) and not os.path.exists(os.path.join(folder, "published.json"))
 
 def main():
+    if not TOKEN:
+        print(f"[{POSTS_DIR}] 토큰 없음 — 건너뜀"); return
     me = call("GET", "me", fields="user_id,username")
     uid = me["user_id"]
     print(f"계정: @{me.get('username')} ({uid})  DRY_RUN={DRY}")
-    targets = sorted(f for f in glob.glob("posts/*") if os.path.isdir(f) and due(f))
+    targets = sorted(f for f in glob.glob(f"{POSTS_DIR}/*") if os.path.isdir(f) and due(f))
     if os.environ.get("FORCE_FOLDER"):
+        if not os.environ["FORCE_FOLDER"].startswith(POSTS_DIR + "/"):
+            print(f"[{POSTS_DIR}] 지정 폴더가 이 계정 것이 아님 — 건너뜀"); return
         targets = [os.environ["FORCE_FOLDER"]]
     if not targets:
         print("올릴 게시물 없음"); return
