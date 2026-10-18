@@ -9,7 +9,7 @@ on:
         type: boolean
         default: true
       folder:
-        description: "특정 폴더만 (예: posts/2026-10-21_1200_ep1) — 비우면 예약된 것 전부"
+        description: "특정 폴더만 (예: posts/kkankkan/2026-10-21_1200_ep1) — 비우면 예약된 것 전부"
         required: false
 permissions:
   contents: write
@@ -32,9 +32,17 @@ jobs:
           PY
           git config user.name "kkankkan-bot"; git config user.email "bot@users.noreply.github.com"
           git add -A posts && (git diff --cached --quiet || (git commit -m "PNG→JPG 변환" && git push && sleep 20))
-      - name: 게시
+      - name: 게시 — 깐깐팍 (posts/kkankkan)
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          POSTS_DIR: posts/kkankkan
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          FORCE_FOLDER: ${{ inputs.folder }}
+        run: python publish.py
+      - name: 게시 — 넵쮜 (posts/napzzi)
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN_NAPZZI }}
+          POSTS_DIR: posts/napzzi
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
           FORCE_FOLDER: ${{ inputs.folder }}
         run: python publish.py
